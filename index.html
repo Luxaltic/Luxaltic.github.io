@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProConfig | Multi-Tenant Platform</title>
+    <style>
+        :root {
+            --bg: #0f172a; --card-bg: #1e293b; --accent: #38bdf8;
+            --text: #f1f5f9; --text-muted: #94a3b8; --success: #10b981;
+        }
+
+        body, html { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        /* Navigation */
+        nav { padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; background: #0f172a; height: 60px; z-index: 100; position: relative; }
+        .nav-left { display: flex; align-items: center; gap: 15px; }
+        .logo { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+        .badge { background: var(--accent); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: bold; text-transform: uppercase; }
+        .nav-btn { background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; }
+
+        /* Pages */
+        .page { display: none; height: calc(100vh - 60px); width: 100%; overflow: auto; }
+        .page.active { display: block; }
+
+        /* Studio & Layout */
+        #editor-page { grid-template-columns: 320px 1fr; overflow: hidden; }
+        #editor-page.active { display: grid; }
+        .sidebar { background: var(--card-bg); padding: 1.5rem; border-right: 1px solid #334155; display: flex; flex-direction: column; gap: 1rem; }
+
+        /* Canvas & Zoom */
+        .canvas-container { background: #0b1120; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; cursor: grab; }
+        #viewport { position: relative; transform-origin: 0 0; will-change: transform; }
+        #comparison-wrapper { position: relative; line-height: 0; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        #beforeCanvas { position: absolute; top:0; left:0; z-index:1; }
+        #mainCanvas { position: relative; z-index:2; }
+        #compare-handle { position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: var(--accent); cursor: ew-resize; z-index: 10; transform: translateX(-50%); }
+
+        /* Gallery Grid */
+        .variant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; padding: 2rem; }
+        .variant-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid #334155; transition: 0.2s; position: relative; }
+        .variant-card:hover { border-color: var(--accent); }
+        .variant-card img { width: 100%; height: 200px; object-fit: cover; }
+        .variant-info { padding: 1rem; text-align: center; }
+
+        /* Fullview Zoom */
+        #fullview-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; overflow: hidden; }
+        #fullview-img { position: absolute; cursor: grab; transform-origin: 0 0; }
+        .close-fullview { position: fixed; top: 20px; right: 20px; z-index: 2100; background: white; border: none; padding: 10px; border-radius: 50%; cursor: pointer; }
+
+        .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; }
+        .btn-success { background: var(--success); color: white; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-left">
+            <div class="logo">PROCONFIG.</div>
+            <div id="client-badge" class="badge">Admin Mode</div>
+        </div>
+        <div class="nav-left">
+            <button class="nav-btn" id="btn-back" onclick="switchPage('showroom')" style="display:none">← Back to Projects</button>
+            <button class="nav-btn" id="btn-export" onclick="exportClientData()">Export Client JSON</button>
+        </div>
+    </nav>
+
+    <section id="showroom" class="page active">
+        <div style="text-align:center; padding: 2rem;">
+            <h1 id="showroom-header">Managed Projects</h1>
+            <p id="showroom-sub" style="color:var(--text-muted)">Select a product to view or edit variations.</p>
+        </div>
+        <div class="variant-grid" id="showroom-grid"></div>
+    </section>
+
+    <section id="lookbook" class="page">
+        <div style="padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+            <h2 id="lb-title">Client Gallery</h2>
+            <button class="btn" id="admin-studio-btn" style="width:auto; padding: 10px 20px;" onclick="startEditing(activeProductId)">+ Add New Style</button>
+        </div>
+        <div class="variant-grid" id="variant-list"></div>
+    </section>
+
+    <section id="editor-page" class="page">
+        <aside class="sidebar">
+            <h3>Design Studio</h3>
+            <label style="font-size:0.7rem">TOLERANCE</label>
+            <input type="range" id="tolerance" min="1" max="100" value="30">
+            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%; height:40px">
+            <button class="btn" onclick="applyColorPro()">Apply Color</button>
+            <button class="btn" style="background:#475569; color:white" onclick="undo()">Undo</button>
+            <hr style="border:1px solid #334155; width:100%">
+            <input type="text" id="saveName" placeholder="Style Name (e.g. Velvet Red)" style="padding:10px; border-radius:5px; border:none;">
+            <button class="btn btn-success" onclick="saveDesign()">Save to Client Gallery</button>
+            <p style="font-size: 0.6rem; color: var(--text-muted); text-align:center;">Zoom: Scroll | Pan: Drag</p>
+        </aside>
+        <main class="canvas-container" id="container">
+            <div id="viewport">
+                <div id="comparison-wrapper">
+                    <canvas id="beforeCanvas"></canvas>
+                    <canvas id="mainCanvas"></canvas>
+                    <div id="compare-handle"></div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <div id="fullview-overlay">
+        <button class="close-fullview" onclick="closeFull()">✕</button>
+        <img id="fullview-img" src="">
+    </div>
+
+    <script>
+        // --- MULTI-CLIENT DATABASE STRUCTURE ---
+        const defaultData = {
+            'GlobalDesigns': {
+                'sofa': { name: "Modern Sofa", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200", variants: [] },
+                'car': { name: "Sport Sedan", img: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200", variants: [] }
+            }
+        };
+
+        // 1. Detect Client from URL: ?client=SofaCo
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentClientID = urlParams.get('client') || 'GlobalDesigns';
+        const isAdmin = !urlParams.has('client'); // If no client param, you are Admin
+
+        let masterData = JSON.parse(localStorage.getItem('proConfig_Corp')) || defaultData;
+        
+        // Ensure the current client exists in data
+        if (!masterData[currentClientID]) {
+            masterData[currentClientID] = JSON.parse(JSON.stringify(defaultData.GlobalDesigns));
+        }
+
+        let productData = masterData[currentClientID];
+        let activeProductId = null;
+
+        // --- INITIALIZE UI ---
+        function initApp() {
+            const badge = document.getElementById('client-badge');
+            badge.innerText = isAdmin ? "Admin Mode" : `Client: ${currentClientID}`;
+            if (!isAdmin) {
+                document.getElementById('admin-studio-btn').style.display = 'none';
+                document.getElementById('btn-export').style.display = 'none';
+                document.getElementById('showroom-header').innerText = "Our Collections";
+                document.getElementById('showroom-sub').innerText = `Welcome to the ${currentClientID} design portal.`;
+            }
+            renderShowroom();
+        }
+
+        function switchPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('btn-back').style.display = (id === 'showroom') ? 'none' : 'block';
+        }
+
+        function renderShowroom() {
+            const grid = document.getElementById('showroom-grid');
+            grid.innerHTML = '';
+            Object.keys(productData).forEach(id => {
+                grid.innerHTML += `
+                    <div class="variant-card" onclick="openLookbook('${id}')">
+                        <img src="${productData[id].img}">
+                        <div class="variant-info"><b>${productData[id].name}</b><br><small>${productData[id].variants.length} Custom Styles</small></div>
+                    </div>`;
+            });
+        }
+
+        function openLookbook(id) {
+            activeProductId = id;
+            const p = productData[id];
+            document.getElementById('lb-title').innerText = p.name;
+            const list = document.getElementById('variant-list');
+            list.innerHTML = `
+                <div class="variant-card" onclick="openFull('${p.img}')">
+                    <img src="${p.img}"><div class="variant-info">Original Style</div>
+                </div>`;
+            
+            p.variants.forEach(v => {
+                list.innerHTML += `
+                    <div class="variant-card" onclick="openFull('${v.url}')">
+                        <img src="${v.url}"><div class="variant-info">${v.name}</div>
+                    </div>`;
+            });
+            switchPage('lookbook');
+        }
+
+        // --- ZOOM & PAN ENGINE ---
+        let scale = 1, posX = 0, posY = 0;
+        const viewport = document.getElementById('viewport');
+        const container = document.getElementById('container');
+
+        container.onwheel = e => {
+            e.preventDefault();
+            const delta = -e.deltaY;
+            const factor = delta > 0 ? 1.1 : 0.9;
+            scale *= factor;
+            updateTransform();
+        };
+
+        let isPanning = false, startX, startY;
+        container.onmousedown = e => { if(e.target.id !== 'compare-handle') { isPanning = true; startX = e.clientX - posX; startY = e.clientY - posY; } };
+        window.onmousemove = e => { if(isPanning) { posX = e.clientX - startX; posY = e.clientY - startY; updateTransform(); } };
+        window.onmouseup = () => isPanning = false;
+        function updateTransform() { viewport.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; }
+
+        // --- EDITOR CORE ---
+        const canvas = document.getElementById('mainCanvas'), ctx = canvas.getContext('2d', {willReadFrequently:true});
+        const bCanvas = document.getElementById('beforeCanvas'), bCtx = bCanvas.getContext('2d');
+        let history = [], mask = null;
+
+        function startEditing(id) {
+            switchPage('editor-page');
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                canvas.width = bCanvas.width = img.width;
+                canvas.height = bCanvas.height = img.height;
+                ctx.drawImage(img, 0, 0); bCtx.drawImage(img, 0, 0);
+                history = [ctx.getImageData(0,0,canvas.width,canvas.height)];
+                mask = new Uint8Array(canvas.width * canvas.height);
+                scale = (container.offsetWidth * 0.7) / canvas.width;
+                posX = (container.offsetWidth - canvas.width * scale)/2;
+                posY = (container.offsetHeight - canvas.height * scale)/2;
+                updateTransform();
+            };
+            img.src = productData[id].img;
+        }
+
+        canvas.onmousedown = e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / scale);
+            const y = Math.floor((e.clientY - rect.top) / scale);
+            floodFill(x, y);
+            renderMask();
+        };
+
+        function floodFill(startX, startY) {
+            const data = history[history.length-1].data;
+            const tol = document.getElementById('tolerance').value * 3;
+            const sIdx = (startY * canvas.width + startX) * 4;
+            const target = [data[sIdx], data[sIdx+1], data[sIdx+2]];
+            const stack = [[startX, startY]], visited = new Uint8Array(canvas.width * canvas.height);
+            while(stack.length) {
+                const [x,y] = stack.pop();
+                const i = y * canvas.width + x;
+                if(visited[i] || mask[i]) continue;
+                visited[i] = 1;
+                const p = i * 4;
+                if(Math.abs(data[p]-target[0]) + Math.abs(data[p+1]-target[1]) + Math.abs(data[p+2]-target[2]) < tol) {
+                    mask[i] = 1;
+                    if(x>0) stack.push([x-1,y]); if(x<canvas.width-1) stack.push([x+1,y]);
+                    if(y>0) stack.push([x,y-1]); if(y<canvas.height-1) stack.push([x,y+1]);
+                }
+            }
+        }
+
+        function renderMask() {
+            ctx.putImageData(history[history.length-1], 0, 0);
+            const view = ctx.getImageData(0,0,canvas.width,canvas.height);
+            for(let i=0; i<mask.length; i++) if(mask[i]) view.data[i*4+2] = Math.min(255, view.data[i*4+2]+100);
+            ctx.putImageData(view, 0, 0);
+        }
+
+        function applyColorPro() {
+            const hex = document.getElementById('colorPicker').value;
+            const r = parseInt(hex.substr(1,2),16), g = parseInt(hex.substr(3,2),16), b = parseInt(hex.substr(5,2),16);
+            const prev = history[history.length-1].data;
+            const next = ctx.createImageData(canvas.width, canvas.height);
+            for(let i=0; i<mask.length; i++) {
+                const p = i*4;
+                if(mask[i]) {
+                    next.data[p] = (prev[p]*r)/255; next.data[p+1] = (prev[p+1]*g)/255; next.data[p+2] = (prev[p+2]*b)/255; next.data[p+3] = 255;
+                } else {
+                    next.data[p] = prev[p]; next.data[p+1] = prev[p+1]; next.data[p+2] = prev[p+2]; next.data[p+3] = prev[p+3];
+                }
+            }
+            ctx.putImageData(next, 0, 0); history.push(next); mask.fill(0);
+        }
+
+        function undo() { if(history.length>1) { history.pop(); ctx.putImageData(history[history.length-1],0,0); mask.fill(0); } }
+
+        function saveDesign() {
+            const name = document.getElementById('saveName').value || "New Style";
+            productData[activeProductId].variants.push({ name, url: canvas.toDataURL() });
+            masterData[currentClientID] = productData;
+            localStorage.setItem('proConfig_Corp', JSON.stringify(masterData));
+            alert(`Saved to ${currentClientID} database.`);
+            openLookbook(activeProductId);
+        }
+
+        // --- FULLVIEW ---
+        function openFull(url) {
+            const fImg = document.getElementById('fullview-img');
+            fImg.src = url;
+            document.getElementById('fullview-overlay').style.display = 'block';
+            // Simple zoom for fullview
+            fImg.style.width = "100%";
+        }
+        function closeFull() { document.getElementById('fullview-overlay').style.display = 'none'; }
+
+        function exportClientData() {
+            const blob = new Blob([JSON.stringify(productData, null, 2)], {type: "application/json"});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${currentClientID}_config.json`;
+            a.click();
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
