@@ -357,6 +357,8 @@ nav {
     </div>
     <div class="nav-right">
         <button class="nav-btn" onclick="exportClientData()">Export JSON</button>
+        <button class="btn" onclick="document.getElementById('import-file').click()" style="background: #3b82f6; color: white; margin-left: 10px;">Import JSON</button>
+    <input type="file" id="import-file" style="display:none;" accept=".json" onchange="importClientData(event)">
     </div>
 </nav>
 
@@ -442,6 +444,84 @@ nav {
     </div>
 
     <script>
+        // Ensure these are at the top level of your script
+let view = {
+    x: 0,
+    y: 0,
+    zoom: 1,
+    isPanning: false,
+    startX: 0,
+    startY: 0
+};
+let isPanning = false;
+let startX = 0;
+let startY = 0;
+
+
+// 1. MOUSE DOWN (Middle Click Only)
+window.addEventListener('mousedown', (e) => {
+    // e.button === 1 or e.which === 2 is Middle Click
+    if (e.button === 1 || e.which === 2) {
+        isPanning = true;
+        // Logic: Store where the mouse is relative to the current image position
+        startX = e.clientX - view.x;
+        startY = e.clientY - view.y;
+        
+        document.body.style.cursor = 'grabbing';
+        e.preventDefault(); // Kills the "Auto-scroll" circle
+    }
+}, { passive: false });
+
+// 2. MOUSE MOVE
+window.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    view.x = e.clientX - startX;
+    view.y = e.clientY - startY;
+
+    // Force the redraw!
+    drawEditor(); 
+});
+
+// 3. MOUSE UP (Global Release)
+window.addEventListener('mouseup', (e) => {
+    if (e.button === 1 || e.which === 2) {
+        isPanning = false;
+        document.body.style.cursor = 'default';
+    }
+});
+function drawEditor() {
+    // 1. Double check the ID here matches your HTML <canvas id="...">
+    const canvas = document.getElementById('mainCanvas') || document.querySelector('canvas');
+    
+    if (!canvas) {
+        console.error("Canvas not found! Check your HTML ID.");
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
+
+    // 2. Reset and Clear
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 3. Apply Camera (The view object we created)
+    ctx.translate(view.x, view.y);
+    ctx.scale(view.zoom, view.zoom);
+
+    // 4. Draw current image
+    // Note: Make sure 'baseImage' is the variable holding your house/car
+    if (typeof baseImage !== 'undefined' && baseImage) {
+        ctx.drawImage(baseImage, 0, 0);
+    }
+}
+        /*let view = {
+    x: 0,
+    y: 0,
+    zoom: 1,
+    isPanning: false,
+    startX: 0,
+    startY: 0
+};*/
         /*<div id="compare-overlay">
         <button class="close-btn" onclick="closeCompare()">✕</button>
         <div class="compare-box" id="comp-box">
@@ -455,7 +535,12 @@ nav {
         const defaultData = {
             'GlobalDesigns': {
                 'sofa': { name: "Luxe Sofa", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200", variants: [] },
-                'car': { name: "GT Sedan", img: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200", variants: [] }
+                'car': { name: "GT Sedan", img: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200", variants: [] },
+                'house_01': { 
+            name: 'Modern Villa', 
+            img: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1000', 
+            variants: [] 
+        }
             }
         };
 
@@ -500,6 +585,34 @@ async function loadFromDB(key) {
         const req = store.get(key);
         req.onsuccess = () => res(req.result);
     });
+}
+
+async function importClientData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            
+            // 1. Update the local variable so the app sees the new data immediately
+            productData = importedData;
+
+            // 2. Save to IndexedDB using your specific function
+            // We use currentClientID as the 'key'
+            await saveToDB(currentClientID, productData);
+
+            // 3. Refresh the Showroom UI
+            renderShowroom();
+            
+            alert("Import Successful!");
+        } catch (err) {
+            console.error("Import failed:", err);
+            alert("Error: Invalid file format.");
+        }
+    };
+    reader.readAsText(file);
 }
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -950,6 +1063,19 @@ function fitToScreen(imgWidth, imgHeight) {
     updateTransform();
 }
 
+
+/*function drawEditor() {
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Clear transformations
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Apply the camera move
+    ctx.translate(view.x, view.y);
+    ctx.scale(view.zoom, view.zoom);
+
+    // Draw your content
+    if (img) ctx.drawImage(img, 0, 0);
+}*/
 // --- ZOOM FUNCTIONALITY ---
 document.getElementById('container').onwheel = e => {
     e.preventDefault();
@@ -967,36 +1093,47 @@ document.getElementById('container').onwheel = e => {
     
     updateTransform();
 };
-
-let isPanning = false;
-let startX, startY;
-
-const container = document.getElementById('container');
-
-container.onmousedown = e => {
-    // Start panning if middle mouse button is clicked (button 1) 
-    // or if you want to use the left click while holding a key
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        isPanning = true;
-        startX = e.clientX - posX;
-        startY = e.clientY - posY;
-        container.style.cursor = 'grabbing';
+/*
+// Assuming 'canvas' is your variable name
+canvas.onmousedown = (e) => {
+    // 1 is the code for the Middle Mouse Button
+    if (e.button === 1) {
+        view.isPanning = true;
+        view.startX = e.clientX - view.x;
+        view.startY = e.clientY - view.y;
+        canvas.style.cursor = 'grabbing';
+        
+        // Stops the "Auto-Scroll" circle from appearing
+        e.preventDefault(); 
+        return false;
     }
 };
 
-window.onmousemove = e => {
-    if (!isPanning) return;
-    posX = e.clientX - startX;
-    posY = e.clientY - startY;
-    updateTransform();
+window.onmousemove = (e) => {
+    if (!view.isPanning) return;
+
+    view.x = e.clientX - view.startX;
+    view.y = e.clientY - view.startY;
+
+    drawEditor(); // Use your redraw function here
 };
 
-window.onmouseup = () => {
-    isPanning = false;
-    container.style.cursor = 'default';
+window.onmouseup = (e) => {
+    if (e.button === 1) {
+        view.isPanning = false;
+        canvas.style.cursor = 'crosshair';
+    }
 };
 
+// PREVENT CONTEXT MENU (Optional)
+// If you ever want to use Right Click to pan, you'll need this:
+canvas.oncontextmenu = (e) => { if (e.button === 1) e.preventDefault(); };
 
+window.addEventListener('mousedown', (e) => {
+    if (e.button === 1) e.preventDefault();
+}, { passive: false });
+
+*/
         initApp();
         // Call this ONCE at the very bottom of your script tag, NOT inside handleCardClick
 initSliderLogic();
