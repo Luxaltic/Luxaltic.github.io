@@ -3,149 +3,615 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProConfig | Multi-Tenant Platform</title>
+    <title>Luxaltic | Premium Configurator</title>
     <style>
         :root {
             --bg: #0f172a; --card-bg: #1e293b; --accent: #38bdf8;
             --text: #f1f5f9; --text-muted: #94a3b8; --success: #10b981;
         }
 
+        /* Move Back Button to the Left */
+nav { 
+    padding: 0 2rem; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border-bottom: 1px solid #334155; 
+    background: #0f172a; 
+    height: 60px; 
+    z-index: 100; 
+    position: relative; 
+}
+
+.nav-left { 
+    display: flex; 
+    align-items: center; 
+    /* This ensures the logo and back button stay grouped on the left */
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+}
+
+#btn-back {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: var(--accent);
+    font-weight: bold;
+    padding: 6px 15px;
+}
+
+/* Specific styling for the back button container */
+#btn-back {
+    order: 1; /* Forces the back button to the far left */
+    margin-right: 20px;
+    background: transparent;
+    border: 1px solid #334155;
+    font-weight: bold;
+}
+
         body, html { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
 
         /* Navigation */
         nav { padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; background: #0f172a; height: 60px; z-index: 100; position: relative; }
         .nav-left { display: flex; align-items: center; gap: 15px; }
-        .logo { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+        .logo { font-size: 1.4rem; font-weight: 800; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
         .badge { background: var(--accent); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: bold; text-transform: uppercase; }
-        .nav-btn { background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; }
+        .nav-btn { background: #334155; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: 0.2s; }
+        .nav-btn:hover { background: #475569; }
 
         /* Pages */
         .page { display: none; height: calc(100vh - 60px); width: 100%; overflow: auto; }
         .page.active { display: block; }
 
-        /* Studio & Layout */
-        #editor-page { grid-template-columns: 320px 1fr; overflow: hidden; }
-        #editor-page.active { display: grid; }
-        .sidebar { background: var(--card-bg); padding: 1.5rem; border-right: 1px solid #334155; display: flex; flex-direction: column; gap: 1rem; }
+        /* Showroom */
+        /* --- TOP-JUSTIFIED & DYNAMICALLY CENTERED SHOWROOM --- */
+#showroom.active { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: flex-start; /* Aligns content to the top */
+    padding-top: 5vh; /* Gives a nice breathing room at the top */
+    padding-bottom: 5vh;
+}
 
-        /* Canvas & Zoom */
-        .canvas-container { background: #0b1120; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; cursor: grab; }
-        #viewport { position: relative; transform-origin: 0 0; will-change: transform; }
-        #comparison-wrapper { position: relative; line-height: 0; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-        #beforeCanvas { position: absolute; top:0; left:0; z-index:1; }
-        #mainCanvas { position: relative; z-index:2; }
-        #compare-handle { position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: var(--accent); cursor: ew-resize; z-index: 10; transform: translateX(-50%); }
+.showroom-content { 
+    width: 100%; 
+    max-width: 1200px; /* Widened slightly for a more premium feel */
+    padding: 0 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centers the header and the grid itself */
+}
 
-        /* Gallery Grid */
-        .variant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; padding: 2rem; }
+.variant-grid { 
+    display: grid; 
+    /* Ensures cards don't stretch too wide but stay centered as a group */
+    grid-template-columns: repeat(auto-fit, minmax(280px, 320px)); 
+    justify-content: center; /* This is the "Magic" that centers the cards */
+    gap: 2.5rem; 
+    width: 100%;
+    margin-top: 3rem; 
+}
         .variant-card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid #334155; transition: 0.2s; position: relative; }
-        .variant-card:hover { border-color: var(--accent); }
+        .variant-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .variant-card.selected { border: 2px solid var(--accent); }
         .variant-card img { width: 100%; height: 200px; object-fit: cover; }
-        .variant-info { padding: 1rem; text-align: center; }
+        .variant-info { padding: 1.2rem; text-align: center; }
 
-        /* Fullview Zoom */
-        #fullview-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; overflow: hidden; }
-        #fullview-img { position: absolute; cursor: grab; transform-origin: 0 0; }
-        .close-fullview { position: fixed; top: 20px; right: 20px; z-index: 2100; background: white; border: none; padding: 10px; border-radius: 50%; cursor: pointer; }
+        /* Editor */
+        #editor-page.active { display: grid; grid-template-columns: 300px 1fr; overflow: hidden; }
+        .sidebar { background: var(--card-bg); padding: 1.5rem; border-right: 1px solid #334155; display: flex; flex-direction: column; gap: 1rem; z-index: 10; }
+        .canvas-container { background: #0b1120; position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; cursor: grab; }
+        #viewport { 
+    position: relative; 
+    display: inline-block; 
+    transform-origin: center center; /*zoom from center instead of corner */
+    transition: transform 0.05s ease-out; /* Makes zooming feel silky smooth */
+    cursor: crosshair; /* Better for editing */
+}
+        #mainCanvas { position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.6); border-radius: 4px; }
 
+        /* Comparison Overlay */
+        #compare-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); backdrop-filter: blur(10px);
+            z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .compare-box { position: relative; width: 80vw; height: 80vh; overflow: hidden; border-radius: 8px; border: 1px solid #334155; }
+        #comp-box {
+    position: relative;
+    width: 80vw;
+    height: 80vh;
+    overflow: hidden;
+    background: #000; /* Backdrop in case images are different sizes */
+}
+#comp-img-1, #comp-img-2 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Keeps furniture proportions perfect */
+    pointer-events: none;
+}
+
+#comp-img-2 {
+    z-index: 2; /* Sits on top */
+}
+        /*#comp-img-1, #comp-img-2 { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+        #comp-img-2 { clip-path: inset(0 0 0 50%); pointer-events: none; }*/
+        #comp-slider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: white;
+    z-index: 10;
+    cursor: ew-resize;
+    align-items: center;
+    justify-content: center;
+}
+/* The Circle behind the arrows */
+#comp-slider::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+/* The Left/Right Arrows */
+#comp-slider::after {
+    content: '◄ ►'; /* Simple text arrows for reliability */
+    position: absolute;
+    font-size: 12px;
+    color: #0f172a;
+    font-weight: bold;
+    letter-spacing: -2px; /* Pulls them closer together */
+}
+        /*#comp-slider { 
+            position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; 
+            background: var(--accent); cursor: ew-resize; z-index: 10; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #comp-slider::after {
+            content: '↔'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--accent); color: #000; width: 34px; height: 34px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem;
+        }*/
+
+
+        /* Ensure the slider container is a clean slate */
+.comparison-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    cursor: default;
+    touch-action: none; /* Prevents jumping on mobile */
+}
+/*.comparison-container {
+    position: relative;
+    width: 80vw;
+    height: 80vh;
+    background: #000;
+    overflow: hidden;
+}*/
+
+/* This is the secret: pointer-events none on the image 
+   so the mouse 'clicks through' to the handle */
+.comparison-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none; 
+    user-select: none;
+}
+
+.comparison-base, .comparison-overlay-clip img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none; /* Critically important! */
+}
+
+.comparison-overlay-clip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    overflow: hidden; /* This hides the right side of the second image */
+    border-right: 2px solid white;
+    z-index: 10;
+}
+.slider-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px; /* Wider hit area for easier grabbing */
+    margin-left: -20px;
+    z-index: 20;
+    cursor: ew-resize;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.slider-handle::before {
+    content: '';
+    width: 4px;
+    height: 100%;
+    background: white;
+}
+/* Larger 'touch area' for the handle */
+.slider-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+        /* Lightbox */
+        #fullview-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            z-index: 2000; display: none; justify-content: center; align-items: center; 
+        }
+        #fullview-img { max-width: 85vw; max-height: 85vh; border-radius: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
+        
+        .close-btn { position: fixed; top: 20px; right: 20px; z-index: 3100; background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-weight: bold; }
         .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; }
-        .btn-success { background: var(--success); color: white; }
+        .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+
+        /* Style for the Edit Button on Cards */
+.edit-btn-overlay {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(15, 23, 42, 0.8);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    z-index: 5;
+    text-transform: uppercase;
+}
+
+.edit-btn-overlay:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+/* Style for the Delete Button on Cards */
+.delete-btn-overlay {
+    position: absolute;
+    bottom: 10px;
+    left: 10px; /* Positioned on the left */
+    background: rgba(220, 38, 38, 0.8); /* Red tint */
+    color: white;
+    border: 1px solid #ef4444;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    z-index: 5;
+    text-transform: uppercase;
+}
+
+.delete-btn-overlay:hover {
+    background: #dc2626;
+    transform: scale(1.05);
+}
+
+.btn-success {
+    background: var(--success) !important;
+    color: white !important;
+    cursor: pointer;
+}
+.canvas-container { 
+    background: #0b1120; 
+    position: relative; 
+    overflow: hidden; 
+    display: flex;
+    justify-content: center; /* Horizontally center */
+    align-items: center;     /* Vertically center */
+    padding: 40px;           /* The "Space around it" you requested */
+    box-sizing: border-box;
+    touch-action: none; /* Prevents browser interference on mobile/trackpads */
+}
+
+/*#viewport { 
+    position: relative; 
+    transform-origin: center center; // Zoom from center instead of corner
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}*/
+
+
     </style>
 </head>
 <body>
 
     <nav>
-        <div class="nav-left">
-            <div class="logo">PROCONFIG.</div>
-            <div id="client-badge" class="badge">Admin Mode</div>
-        </div>
-        <div class="nav-left">
-            <button class="nav-btn" id="btn-back" onclick="switchPage('showroom')" style="display:none">← Back to Projects</button>
-            <button class="nav-btn" id="btn-export" onclick="exportClientData()">Export Client JSON</button>
-        </div>
-    </nav>
+    <div class="nav-left">
+        <button class="nav-btn" id="btn-back" onclick="handleBackNavigation()" style="display:none; margin-right: 15px;">← BACK</button>
+        <div class="logo">LUXALTIC</div>
+        <div id="client-badge" class="badge">Admin</div>
+    </div>
+    <div class="nav-right">
+        <button class="nav-btn" onclick="exportClientData()">Export JSON</button>
+    </div>
+</nav>
 
     <section id="showroom" class="page active">
-        <div style="text-align:center; padding: 2rem;">
-            <h1 id="showroom-header">Managed Projects</h1>
-            <p id="showroom-sub" style="color:var(--text-muted)">Select a product to view or edit variations.</p>
+        <div class="showroom-content">
+            <div style="text-align:center;">
+                <h1>LUXALTIC Showroom</h1>
+                <p style="color:var(--text-muted)">Welcome to your master configuration dashboard.</p>
+            </div>
+            <div class="variant-grid" id="showroom-grid"></div>
         </div>
-        <div class="variant-grid" id="showroom-grid"></div>
     </section>
 
     <section id="lookbook" class="page">
-        <div style="padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="lb-title">Client Gallery</h2>
-            <button class="btn" id="admin-studio-btn" style="width:auto; padding: 10px 20px;" onclick="startEditing(activeProductId)">+ Add New Style</button>
+        <div style="max-width: 1200px; margin: 0 auto;">
+            <div style="padding: 2rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 id="lb-title" style="margin:0">Gallery</h2>
+                    <p id="compare-hint" style="font-size:0.8rem; color:var(--accent); display:none;">Select 2 styles to compare...</p>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" id="compare-toggle-btn" onclick="toggleCompareMode()">Compare Styles</button>
+                    <button class="btn" id="admin-studio-btn" onclick="startEditing(activeProductId)">+ Create New Style</button>
+                </div>
+            </div>
+            <div class="variant-grid" id="variant-list" style="padding: 0 2rem;"></div>
         </div>
-        <div class="variant-grid" id="variant-list"></div>
     </section>
 
     <section id="editor-page" class="page">
         <aside class="sidebar">
-            <h3>Design Studio</h3>
-            <label style="font-size:0.7rem">TOLERANCE</label>
+            <h3>Studio</h3>
+            <label style="font-size:0.7rem">SELECTION TOLERANCE</label>
             <input type="range" id="tolerance" min="1" max="100" value="30">
-            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%; height:40px">
-            <button class="btn" onclick="applyColorPro()">Apply Color</button>
+            <label style="font-size:0.7rem">BRUSH COLOR</label>
+            <input type="color" id="colorPicker" value="#38bdf8" style="width:100%; height:45px; border:none; cursor:pointer;">
+            <button class="btn" onclick="applyColorPro()">Apply Finish</button>
             <button class="btn" style="background:#475569; color:white" onclick="undo()">Undo</button>
-            <hr style="border:1px solid #334155; width:100%">
-            <input type="text" id="saveName" placeholder="Style Name (e.g. Velvet Red)" style="padding:10px; border-radius:5px; border:none;">
-            <button class="btn btn-success" onclick="saveDesign()">Save to Client Gallery</button>
-            <p style="font-size: 0.6rem; color: var(--text-muted); text-align:center;">Zoom: Scroll | Pan: Drag</p>
+            <hr style="border-top:1px solid #334155; width:100%; border-bottom:0; margin:15px 0;">
+            <input type="text" id="saveName" placeholder="Finish Name (e.g. Royal Gold)">
+            <div style="display:flex; gap:10px;">
+    <div style="display:flex; gap:10px; margin-top:10px;">
+    <button id="btn-save-exist" class="btn" style="display:none; background:#475569; color:white;" onclick="saveDesign(false)">SAVE</button>
+    <button class="btn btn-success" onclick="saveDesign(true)">SAVE NEW</button>
+</div>
+</div>
         </aside>
         <main class="canvas-container" id="container">
-            <div id="viewport">
-                <div id="comparison-wrapper">
-                    <canvas id="beforeCanvas"></canvas>
-                    <canvas id="mainCanvas"></canvas>
-                    <div id="compare-handle"></div>
-                </div>
-            </div>
+            <div id="viewport"><canvas id="mainCanvas"></canvas></div>
         </main>
     </section>
 
+    <div id="compare-overlay" class="compare-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.95); z-index:2000; flex-direction:column; align-items:center; justify-content:center; user-select:none;">
+    
+    <div style="width:90vw; display:flex; justify-content:flex-end; padding-bottom:15px;">
+        <button class="btn" onclick="closeCompare()" style="background:white; color:black; border:none; padding:10px 25px; cursor:pointer; border-radius:5px; font-weight:bold; font-size:14px;">
+            ✕ CLOSE
+        </button>
+    </div>
+
+    <div class="comparison-container" id="comp-container" style="position:relative; width:90vw; height:80vh; overflow:hidden; background:#000; border: 1px solid #333;">
+        
+        <img id="comp-img-1" src="" style="width:100%; height:100%; object-fit:contain; position:absolute;">
+        
+        <div id="comp-clip" style="position:absolute; top:0; left:0; height:100%; width:50%; overflow:hidden; border-right:2px solid white; z-index:10;">
+            <img id="comp-img-2" src="" style="width:90vw; height:80vh; object-fit:contain;">
+        </div>
+        
+        <div id="comp-handle" style="position:absolute; top:0; bottom:0; width:40px; left:50%; margin-left:-20px; cursor:ew-resize; z-index:20; display:flex; align-items:center; justify-content:center;">
+            <div style="width:4px; height:100%; background:white; pointer-events:none;"></div>
+            
+            <div style="position:absolute; width:40px; height:40px; background:white; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(0,0,0,0.5); pointer-events:none;">
+                <span style="color:black; font-size:14px; font-weight:bold;">◄ ►</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
     <div id="fullview-overlay">
-        <button class="close-fullview" onclick="closeFull()">✕</button>
+        <button class="close-btn" onclick="closeFull()">✕</button>
         <img id="fullview-img" src="">
     </div>
 
     <script>
-        // --- MULTI-CLIENT DATABASE STRUCTURE ---
+        /*<div id="compare-overlay">
+        <button class="close-btn" onclick="closeCompare()">✕</button>
+        <div class="compare-box" id="comp-box">
+            <img id="comp-img-1" src="">
+            <img id="comp-img-2" src="">
+            <div id="comp-slider"></div>
+        </div>
+        <p style="margin-top:20px; color:var(--text-muted)">Drag the center handle to compare finishes</p>
+    </div>*/
+        //let activeVariantIndex = null; // null means "New Style", a number means "Editing Existing"
         const defaultData = {
             'GlobalDesigns': {
-                'sofa': { name: "Modern Sofa", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200", variants: [] },
-                'car': { name: "Sport Sedan", img: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200", variants: [] }
+                'sofa': { name: "Luxe Sofa", img: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200", variants: [] },
+                'car': { name: "GT Sedan", img: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=1200", variants: [] }
             }
         };
 
-        // 1. Detect Client from URL: ?client=SofaCo
+        // --- NEW GLOBAL STATE ---
+let db;
+let productData = null; // Will be loaded from DB
+let activeProductId = null;
+let activeVariantIndex = null;
+const currentClientID = new URLSearchParams(window.location.search).get('client') || 'GlobalDesigns';
+const isAdmin = !new URLSearchParams(window.location.search).has('client');
+
+// --- NEW DATABASE CONTROLLER ---
+const DB_NAME = 'LuxalticStorage';
+const DB_VERSION = 1;
+const STORE_NAME = 'projects';
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME);
+        };
+        request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+        request.onerror = (e) => reject("DB Error");
+    });
+}
+
+async function saveToDB(key, data) {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((res) => {
+        const req = store.put(data, key);
+        req.onsuccess = () => res();
+    });
+}
+
+async function loadFromDB(key) {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((res) => {
+        const req = store.get(key);
+        req.onsuccess = () => res(req.result);
+    });
+}
+
         const urlParams = new URLSearchParams(window.location.search);
-        const currentClientID = urlParams.get('client') || 'GlobalDesigns';
-        const isAdmin = !urlParams.has('client'); // If no client param, you are Admin
+        //let currentClientID = new URLSearchParams(window.location.search).get('client') || 'GlobalDesigns';
+        //const isAdmin = !urlParams.has('client');
+        //let masterData = JSON.parse(localStorage.getItem('luxaltic_db')) || defaultData;
+        //let productData = masterData[currentClientID]; // The current client's projects
+        //let activeProductId = null;      // The specific item (e.g., 'sofa')
+        //let activeVariantIndex = null;   // The specific custom style index
 
-        let masterData = JSON.parse(localStorage.getItem('proConfig_Corp')) || defaultData;
-        
-        // Ensure the current client exists in data
-        if (!masterData[currentClientID]) {
-            masterData[currentClientID] = JSON.parse(JSON.stringify(defaultData.GlobalDesigns));
-        }
 
-        let productData = masterData[currentClientID];
-        let activeProductId = null;
+        window.onmousemove = (e) => {
+    if (!isDraggingSlider) return;
+    
+    const slider = document.getElementById('comp-slider');
+    const box = document.getElementById('comp-box');
+    const img2 = document.getElementById('comp-img-2');
 
-        // --- INITIALIZE UI ---
-        function initApp() {
-            const badge = document.getElementById('client-badge');
-            badge.innerText = isAdmin ? "Admin Mode" : `Client: ${currentClientID}`;
-            if (!isAdmin) {
-                document.getElementById('admin-studio-btn').style.display = 'none';
-                document.getElementById('btn-export').style.display = 'none';
-                document.getElementById('showroom-header').innerText = "Our Collections";
-                document.getElementById('showroom-sub').innerText = `Welcome to the ${currentClientID} design portal.`;
-            }
+    if (!slider || !box || !img2) return;
+
+    const rect = box.getBoundingClientRect();
+    let x = ((e.clientX - rect.left) / rect.width) * 100;
+    
+    // Constraints
+    if (x < 0) x = 0; 
+    if (x > 100) x = 100;
+
+    // Move the handle
+    slider.style.left = x + '%';
+    
+    // REVEAL LOGIC: 
+    // We hide the RIGHT side of the top image based on how much 
+    // distance is left from the slider to the edge (100 - x).
+    img2.style.clipPath = `inset(0 ${100 - x}% 0 0)`;
+};
+
+       /* // --- SLIDER DRAG LOGIC ---
+        const slider = document.getElementById('comp-slider');
+        const box = document.getElementById('comp-box');
+        const img2 = document.getElementById('comp-img-2');
+        let isDraggingSlider = false;
+
+        slider.onmousedown = (e) => { isDraggingSlider = true; e.preventDefault(); };
+        window.onmouseup = () => { isDraggingSlider = false; };
+        window.onmousemove = (e) => {
+            if (!isDraggingSlider) return;
+            const rect = box.getBoundingClientRect();
+            let x = ((e.clientX - rect.left) / rect.width) * 100;
+            if (x < 0) x = 0; if (x > 100) x = 100;
+            slider.style.left = x + '%';
+            img2.style.clipPath = `inset(0 0 0 ${x}%)`;
+        };*/
+
+        // --- APP FLOW ---
+        async function initApp() {
+    await initDB();
+    let saved = await loadFromDB(currentClientID);
+    
+    // Load existing data or use defaults if first time
+    productData = saved || defaultData['GlobalDesigns'];
+    
+    document.getElementById('client-badge').innerText = isAdmin ? "Admin Mode" : `Client: ${currentClientID}`;
+    if (!isAdmin) document.getElementById('admin-studio-btn').style.display = 'none';
+    
+    renderShowroom();
+}
+        /*function initApp() {
+            document.getElementById('client-badge').innerText = isAdmin ? "Admin Mode" : `Client: ${currentClientID}`;
+            if (!isAdmin) document.getElementById('admin-studio-btn').style.display = 'none';
             renderShowroom();
+        }*/
+
+        function renderShowroom() {
+            const grid = document.getElementById('showroom-grid');
+            grid.innerHTML = '';
+            Object.keys(productData).forEach(id => {
+                grid.innerHTML += `<div class="variant-card" onclick="openLookbook('${id}')"><img src="${productData[id].img}"><div class="variant-info"><b>${productData[id].name}</b></div></div>`;
+            });
         }
+
+        function openLookbook(id) {
+            activeProductId = id;
+            renderLookbook(id);
+            switchPage('lookbook');
+        }
+
+        function renderLookbook(id) {
+    const p = productData[id];
+    const list = document.getElementById('variant-list');
+    
+    // 1. Base Design (No delete button for the original product)
+    list.innerHTML = `
+        <div class="variant-card" onclick="handleCardClick('${p.img}', this)">
+            <img src="${p.img}">
+            <div class="variant-info">Base Design</div>
+        </div>`;
+    
+    // 2. Custom Variants
+    p.variants.forEach((v, index) => {
+        list.innerHTML += `
+            <div class="variant-card" style="position:relative;">
+                <div onclick="handleCardClick('${v.url}', this.parentElement)">
+                    <img src="${v.url}">
+                    <div class="variant-info">${v.name}</div>
+                </div>
+                ${isAdmin ? `
+                    <button class="delete-btn-overlay" onclick="event.stopPropagation(); deleteStyle('${id}', ${index})">Delete</button>
+                    <button class="edit-btn-overlay" onclick="event.stopPropagation(); resumeEditing('${id}', ${index})">Edit</button>
+                ` : ''}
+            </div>`;
+    });
+}
 
         function switchPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -153,86 +619,203 @@
             document.getElementById('btn-back').style.display = (id === 'showroom') ? 'none' : 'block';
         }
 
-        function renderShowroom() {
-            const grid = document.getElementById('showroom-grid');
-            grid.innerHTML = '';
-            Object.keys(productData).forEach(id => {
-                grid.innerHTML += `
-                    <div class="variant-card" onclick="openLookbook('${id}')">
-                        <img src="${productData[id].img}">
-                        <div class="variant-info"><b>${productData[id].name}</b><br><small>${productData[id].variants.length} Custom Styles</small></div>
-                    </div>`;
-            });
+        // --- COMPARE SYSTEM ---
+        let isCompareMode = false;
+        let selectedForCompare = [];
+
+        function toggleCompareMode() {
+            isCompareMode = !isCompareMode;
+            selectedForCompare = [];
+            document.getElementById('compare-hint').style.display = isCompareMode ? 'block' : 'none';
+            document.getElementById('compare-toggle-btn').innerText = isCompareMode ? 'Cancel Selection' : 'Compare Styles';
+            renderLookbook(activeProductId);
         }
 
-        function openLookbook(id) {
-            activeProductId = id;
-            const p = productData[id];
-            document.getElementById('lb-title').innerText = p.name;
-            const list = document.getElementById('variant-list');
-            list.innerHTML = `
-                <div class="variant-card" onclick="openFull('${p.img}')">
-                    <img src="${p.img}"><div class="variant-info">Original Style</div>
-                </div>`;
+        function handleCardClick(url, cardEl) {
+            if (!isCompareMode) { openFull(url); return; }
+            if (selectedForCompare.includes(url)) {
+                selectedForCompare = selectedForCompare.filter(u => u !== url);
+                cardEl.classList.remove('selected');
+            } else if (selectedForCompare.length < 2) {
+                selectedForCompare.push(url);
+                cardEl.classList.add('selected');
+            }
+            if (selectedForCompare.length === 2) {
+                document.getElementById('comp-img-1').src = selectedForCompare[0];
+                document.getElementById('comp-img-2').src = selectedForCompare[1];
+                document.getElementById('compare-overlay').style.display = 'flex';
+                setTimeout(initSliderLogic, 100);
+            }
             
-            p.variants.forEach(v => {
-                list.innerHTML += `
-                    <div class="variant-card" onclick="openFull('${v.url}')">
-                        <img src="${v.url}"><div class="variant-info">${v.name}</div>
-                    </div>`;
-            });
-            switchPage('lookbook');
         }
 
-        // --- ZOOM & PAN ENGINE ---
-        let scale = 1, posX = 0, posY = 0;
-        const viewport = document.getElementById('viewport');
-        const container = document.getElementById('container');
+        function closeCompare() {
+            document.getElementById('compare-overlay').style.display = 'none';
+            toggleCompareMode();
+        }
 
-        container.onwheel = e => {
+        function initSliderLogic() {
+    let isDragging = false;
+
+    // We attach the mouse down to the document, but only act if we hit the handle
+    window.onmousedown = (e) => {
+        if (e.target.id === 'comp-handle' || e.target.closest('#comp-handle')) {
+            isDragging = true;
             e.preventDefault();
-            const delta = -e.deltaY;
-            const factor = delta > 0 ? 1.1 : 0.9;
-            scale *= factor;
-            updateTransform();
-        };
+        }
+    };
 
-        let isPanning = false, startX, startY;
-        container.onmousedown = e => { if(e.target.id !== 'compare-handle') { isPanning = true; startX = e.clientX - posX; startY = e.clientY - posY; } };
-        window.onmousemove = e => { if(isPanning) { posX = e.clientX - startX; posY = e.clientY - startY; updateTransform(); } };
-        window.onmouseup = () => isPanning = false;
-        function updateTransform() { viewport.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; }
+    window.onmousemove = (e) => {
+        if (!isDragging) return;
 
-        // --- EDITOR CORE ---
+        const container = document.getElementById('comp-container');
+        const handle = document.getElementById('comp-handle');
+        const clip = document.getElementById('comp-clip');
+
+        if (!container || !handle || !clip) return;
+
+        const rect = container.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        
+        let x = clientX - rect.left;
+        let percent = (x / rect.width) * 100;
+        
+        percent = Math.max(0, Math.min(100, percent));
+
+        handle.style.left = percent + '%';
+        clip.style.width = percent + '%';
+    };
+
+    window.onmouseup = () => {
+        isDragging = false;
+    };
+}
+
+
+       /* function initSliderLogic() {
+    const container = document.getElementById('comp-container');
+    const handle = document.getElementById('comp-handle');
+    const clip = document.getElementById('comp-clip');
+    
+    // Safety check: if elements aren't found, stop the function
+    if (!handle || !container || !clip) {
+        console.error("Slider elements not found!");
+        return;
+    }
+
+    let isDragging = false;
+
+    const move = (e) => {
+        if (!isDragging) return;
+        
+        const rect = container.getBoundingClientRect();
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        let x = clientX - rect.left;
+        
+        let percent = (x / rect.width) * 100;
+        percent = Math.max(0, Math.min(100, percent));
+
+        handle.style.left = percent + '%';
+        clip.style.width = percent + '%';
+    };
+
+    // Attach events directly
+    handle.onmousedown = (e) => { 
+        isDragging = true; 
+        e.preventDefault(); 
+    };
+    window.onmousemove = move;
+    window.onmouseup = () => { isDragging = false; };
+    
+    // Touch support
+    handle.ontouchstart = () => { isDragging = true; };
+    window.ontouchmove = move;
+    window.ontouchend = () => { isDragging = false; };
+}*/
+
+        // --- STUDIO ---
         const canvas = document.getElementById('mainCanvas'), ctx = canvas.getContext('2d', {willReadFrequently:true});
-        const bCanvas = document.getElementById('beforeCanvas'), bCtx = bCanvas.getContext('2d');
-        let history = [], mask = null;
+        let history = [], mask = null, scale=1, posX=0, posY=0;
 
-        function startEditing(id) {
-            switchPage('editor-page');
+        function startEditing(id) {      
+    activeVariantIndex = null; // Reset: we are not editing an existing style
+    document.getElementById('btn-save-exist').style.display = 'none';
+    document.getElementById('saveName').value = "";
+    // ... rest of your existing startEditing image loading code ...
+    switchPage('editor-page');
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.onload = () => {
-                canvas.width = bCanvas.width = img.width;
-                canvas.height = bCanvas.height = img.height;
-                ctx.drawImage(img, 0, 0); bCtx.drawImage(img, 0, 0);
-                history = [ctx.getImageData(0,0,canvas.width,canvas.height)];
-                mask = new Uint8Array(canvas.width * canvas.height);
-                scale = (container.offsetWidth * 0.7) / canvas.width;
-                posX = (container.offsetWidth - canvas.width * scale)/2;
-                posY = (container.offsetHeight - canvas.height * scale)/2;
-                updateTransform();
-            };
+            // Inside startEditing AND resumeEditing:
+img.onload = () => {
+    canvas.width = img.width; 
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    
+    history = [ctx.getImageData(0,0,canvas.width,canvas.height)];
+    mask = new Uint8Array(canvas.width * canvas.height);
+    
+    // Use our new centering logic
+    fitToScreen(img.width, img.height);
+};
             img.src = productData[id].img;
         }
+        function resumeEditing(productId, variantIndex) {
+      
+    activeVariantIndex = variantIndex; // Track which one we are editing
+    document.getElementById('btn-save-exist').style.display = 'block';
+    // ... rest of your existing resumeEditing image loading code ...
 
-        canvas.onmousedown = e => {
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / scale);
-            const y = Math.floor((e.clientY - rect.top) / scale);
-            floodFill(x, y);
-            renderMask();
-        };
+    switchPage('editor-page');
+    const variant = productData[productId].variants[variantIndex];
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    // Inside startEditing AND resumeEditing:
+img.onload = () => {
+    canvas.width = img.width; 
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    
+    history = [ctx.getImageData(0,0,canvas.width,canvas.height)];
+    mask = new Uint8Array(canvas.width * canvas.height);
+    
+    // Use our new centering logic
+    fitToScreen(img.width, img.height);
+};
+    img.src = variant.url;
+}
+
+function updateTransform() { 
+    const vp = document.getElementById('viewport');
+    if (vp) {
+        // translate positions the image, scale handles the zoom
+        vp.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; 
+    }
+}
+        /*function updateTransform() { 
+    const vp = document.getElementById('viewport'); // Find the element
+    if (vp) {
+        vp.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; 
+    }
+}*/
+    // We removed posX/posY from here because Flexbox centers the viewport container
+    // We only need translate if we are panning
+    //viewport.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`; 
+
+// --- UPDATED CLICK LOGIC FOR CENTERED CANVAS ---
+canvas.onmousedown = e => {
+    // This gets the actual size and position of the canvas on your screen
+    const rect = canvas.getBoundingClientRect();
+    
+    // This math translates your mouse click into the actual pixel on the image
+    const x = Math.floor((e.clientX - rect.left) / (rect.width / canvas.width));
+    const y = Math.floor((e.clientY - rect.top) / (rect.height / canvas.height));
+
+    // Only run the fill if we clicked inside the image
+    if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+        floodFill(x, y);
+        renderMask();
+    }
+};
 
         function floodFill(startX, startY) {
             const data = history[history.length-1].data;
@@ -279,34 +862,144 @@
 
         function undo() { if(history.length>1) { history.pop(); ctx.putImageData(history[history.length-1],0,0); mask.fill(0); } }
 
-        function saveDesign() {
-            const name = document.getElementById('saveName').value || "New Style";
-            productData[activeProductId].variants.push({ name, url: canvas.toDataURL() });
-            masterData[currentClientID] = productData;
-            localStorage.setItem('proConfig_Corp', JSON.stringify(masterData));
-            alert(`Saved to ${currentClientID} database.`);
-            openLookbook(activeProductId);
-        }
+        async function saveDesign(isNew) {
+    const nameInput = document.getElementById('saveName');
+    const name = nameInput.value.trim() || "New Finish";
+    if (!activeProductId) return;
 
-        // --- FULLVIEW ---
-        function openFull(url) {
-            const fImg = document.getElementById('fullview-img');
-            fImg.src = url;
-            document.getElementById('fullview-overlay').style.display = 'block';
-            // Simple zoom for fullview
-            fImg.style.width = "100%";
-        }
+    // We keep 0.9 quality for professional clarity
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9); 
+    const newVariant = { name: name, url: dataUrl };
+
+    if (isNew || activeVariantIndex === null) {
+        productData[activeProductId].variants.push(newVariant);
+    } else {
+        productData[activeProductId].variants[activeVariantIndex] = newVariant;
+    }
+
+    // Save to the new Infinite Storage
+    await saveToDB(currentClientID, productData);
+    
+    nameInput.value = "";
+    alert("Saved to Luxaltic Database.");
+    openLookbook(activeProductId);
+}
+
+       async function deleteStyle(productId, variantIndex) {
+    // 1. Professional confirmation so you don't delete by accident
+    const styleName = productData[productId].variants[variantIndex].name;
+    if (!confirm(`Are you sure you want to permanently delete "${styleName}"?`)) {
+        return;
+    }
+
+    // 2. Remove from the local data array
+    productData[productId].variants.splice(variantIndex, 1);
+
+    // 3. Sync with IndexedDB
+    await saveToDB(currentClientID, productData);
+
+    // 4. Refresh the UI
+    renderLookbook(productId);
+    console.log("Style deleted successfully from IndexedDB.");
+}
+
+        function openFull(url) { document.getElementById('fullview-img').src = url; document.getElementById('fullview-overlay').style.display = 'flex'; }
         function closeFull() { document.getElementById('fullview-overlay').style.display = 'none'; }
-
+        
         function exportClientData() {
             const blob = new Blob([JSON.stringify(productData, null, 2)], {type: "application/json"});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `${currentClientID}_config.json`;
-            a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `luxaltic_config.json`; a.click();
         }
+        function handleBackNavigation() {
+    const currentPage = document.querySelector('.page.active').id;
+
+    if (currentPage === 'editor-page') {
+        // From Editor, always go back to the specific Product Gallery (Lookbook)
+        switchPage('lookbook');
+    } else if (currentPage === 'lookbook') {
+        // From Gallery, go back to the main Showroom
+        switchPage('showroom');
+    }
+}
+
+// Update switchPage to ensure the back button visibility is managed correctly
+function switchPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    
+    // Hide back button only on the home Showroom page
+    document.getElementById('btn-back').style.display = (id === 'showroom') ? 'none' : 'block';
+}
+
+function fitToScreen(imgWidth, imgHeight) {
+    const container = document.getElementById('container');
+    const padding = 80; // Total padding (40px each side)
+    const availableW = container.clientWidth - padding;
+    const availableH = container.clientHeight - padding;
+
+    // Determine the scale that fits both width and height
+    const scaleW = availableW / imgWidth;
+    const scaleH = availableH / imgHeight;
+    
+    scale = Math.min(scaleW, scaleH, 1); // Fit to screen, but don't upscale past 100%
+    
+    // Reset positions to 0 because Flexbox is handling the centering
+    posX = 0; 
+    posY = 0;
+    
+    updateTransform();
+}
+
+// --- ZOOM FUNCTIONALITY ---
+document.getElementById('container').onwheel = e => {
+    e.preventDefault();
+    const zoomSpeed = 0.1;
+    
+    // Determine zoom direction
+    if (e.deltaY < 0) {
+        scale *= (1 + zoomSpeed); // Zoom In
+    } else {
+        scale /= (1 + zoomSpeed); // Zoom Out
+    }
+
+    // Limit zoom to reasonable levels (10% to 500%)
+    scale = Math.max(0.1, Math.min(scale, 5));
+    
+    updateTransform();
+};
+
+let isPanning = false;
+let startX, startY;
+
+const container = document.getElementById('container');
+
+container.onmousedown = e => {
+    // Start panning if middle mouse button is clicked (button 1) 
+    // or if you want to use the left click while holding a key
+    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+        isPanning = true;
+        startX = e.clientX - posX;
+        startY = e.clientY - posY;
+        container.style.cursor = 'grabbing';
+    }
+};
+
+window.onmousemove = e => {
+    if (!isPanning) return;
+    posX = e.clientX - startX;
+    posY = e.clientY - startY;
+    updateTransform();
+};
+
+window.onmouseup = () => {
+    isPanning = false;
+    container.style.cursor = 'default';
+};
+
 
         initApp();
+        // Call this ONCE at the very bottom of your script tag, NOT inside handleCardClick
+initSliderLogic();
     </script>
 </body>
 </html>
